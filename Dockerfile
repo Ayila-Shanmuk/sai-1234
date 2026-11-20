@@ -1,17 +1,5 @@
 # ==========================================
-# Stage 1: Build React Frontend
-# ==========================================
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
-
-COPY frontend/package*.json ./
-RUN npm ci || npm install
-
-COPY frontend/ ./
-RUN npm run build
-
-# ==========================================
-# Stage 2: Run Backend & Serve SPA
+# Run Backend
 # ==========================================
 FROM python:3.11-slim
 WORKDIR /app
@@ -30,13 +18,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY app.py auth.py train_models.py ./
-COPY data/ ./data/
-COPY models/ ./models/
-COPY templates/ ./templates/
-COPY static/ ./static/
 
-# Copy built frontend assets from Stage 1
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+# data/, models/, templates/, static/ and frontend/ are not in the repo; create
+# the runtime dirs and train the models at build time so the API starts.
+RUN mkdir -p data models templates static && python train_models.py
 
 # Expose port (Railway injects $PORT at runtime)
 EXPOSE 8080
